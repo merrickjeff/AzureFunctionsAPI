@@ -25,6 +25,7 @@ namespace AzureFunctionsAPI_isolated
             var customer = _customerRepository.GetCustomer(id);
             Debug.Assert(customer != null, nameof(customer) + " != null"); // TODO - return an error if null
             return new OkObjectResult("Welcome to Azure Functions!" + $" customer.CustomerId = {customer.CustomerId}");
+            //return new OkObjectResult("Welcome to Azure Functions!" + $" customer.CustomerId = {customer.CustomerId}");
         }
 
         [Function("PostCustomers")]

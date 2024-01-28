@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
-using Dapper;
 using Microsoft.Data.Sqlite;
 
 namespace AzureFunctionsAPI_isolated
@@ -14,10 +16,6 @@ namespace AzureFunctionsAPI_isolated
         private readonly SqliteConnection _connection;
         public CustomerRepository()
         {
-            SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
-            SqlMapper.AddTypeHandler(new GuidTypeHandler());
-            SqlMapper.RemoveTypeMap(typeof(Guid));
-            SqlMapper.RemoveTypeMap(typeof(Guid?));
             // Create a new in-memory Sqlite database and the Customers table
             _connection = new SqliteConnection("DataSource=:memory:");
             _connection.Open();
@@ -41,14 +39,35 @@ namespace AzureFunctionsAPI_isolated
                 DateOfBirth = DateOnly.Parse("02-03-1978"),
                 ProfileImage = "http://urltoimage.com/asdf"
             };
-            var sql = "INSERT INTO Customers (CustomerId, FullName, DateOfBirth, ProfileImage) VALUES (@CustomerId, @FullName, @DateOfBirth, @ProfileImage)";
-            _connection.Execute(sql, customerToInsert);
+            var command = _connection.CreateCommand();
+            command.CommandText = "INSERT INTO Customers (CustomerId, FullName, DateOfBirth, ProfileImage) VALUES (@CustomerId, @FullName, @DateOfBirth, @ProfileImage)";
+            command.Parameters.AddWithValue("@CustomerId", customerToInsert.CustomerId);
+            command.Parameters.AddWithValue("@FullName", customerToInsert.FullName);
+            command.Parameters.AddWithValue("@DateOfBirth", customerToInsert.DateOfBirth);
+            command.Parameters.AddWithValue("@ProfileImage", customerToInsert.ProfileImage);
+            command.ExecuteNonQuery();
+
         }
 
         public Customer? GetCustomer(string customerId)
         {
-            return _connection.QueryFirstOrDefault<Customer>("SELECT * from Customers WHERE CustomerId = @customerId", new {customerId});
-            
+            var result = new Customer();
+            var command = _connection.CreateCommand();
+            command.CommandText = "SELECT * from Customers WHERE CustomerId = @customerId LIMIT 1";
+            var guidParameter = new SqliteParameter("@customerId", customerId.ToUpper()) { DbType = DbType.String };
+            command.Parameters.Add(guidParameter);
+            var sqReader = command.ExecuteReader()!;
+            while (sqReader.Read())
+            {
+                result.CustomerId = Guid.Parse(sqReader.GetString("CustomerId"));
+                result.FullName = sqReader.GetString("FullName");
+                result.DateOfBirth = DateOnly.Parse(sqReader.GetString("DateOfBirth"));
+                result.ProfileImage = sqReader.GetString("ProfileImage");
+            }
+            return result;
+
+
+
         }
 
         public Customer CreateCustomer(string customerId, string fullName, string dateOfBirth, string profileImage)
@@ -61,7 +80,7 @@ namespace AzureFunctionsAPI_isolated
                 ProfileImage = profileImage
             };
             var sql = "INSERT INTO Customers (CustomerId, FullName, DateOfBirth, ProfileImage) VALUES (@CustomerId, @FullName, @DateOfBirth, @ProfileImage)";
-            _connection.Execute(sql, customerToInsert);
+            //_connection.Execute(sql, customerToInsert);
             return customerToInsert;
 
         }
@@ -71,27 +90,5 @@ namespace AzureFunctionsAPI_isolated
     {
         public Customer? GetCustomer(string customerId);
         public Customer CreateCustomer(string customerId, string fullName, string dateOfBirth, string profileImage);
-    }
-    public class DateOnlyTypeHandler : SqlMapper.TypeHandler<DateOnly>
-    {
-        public override DateOnly Parse(object value) => DateOnly.FromDateTime((DateTime)value);
-
-        public override void SetValue(IDbDataParameter parameter, DateOnly value)
-        {
-            parameter.DbType = DbType.Date;
-            parameter.Value = value;
-        }
-    }
-    public class GuidTypeHandler : SqlMapper.TypeHandler<Guid>
-    {
-        public override void SetValue(IDbDataParameter parameter, Guid guid)
-        {
-            parameter.Value = guid.ToString();
-        }
-
-        public override Guid Parse(object value)
-        {
-            return new Guid((string)value);
-        }
     }
 }
