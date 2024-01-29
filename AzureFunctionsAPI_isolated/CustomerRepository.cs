@@ -36,7 +36,7 @@ namespace AzureFunctionsAPI_isolated
             {
                 CustomerId = Guid.Parse("e4e7d865-4720-4e61-a625-56f7a182c3da"),
                 FullName = "Test Person",
-                DateOfBirth = DateOnly.Parse("02-03-1978"),
+                DateOfBirth = DateOnly.Parse("1978-01-28"),
                 ProfileImage = "http://urltoimage.com/asdf"
             };
             var command = _connection.CreateCommand();
@@ -49,9 +49,9 @@ namespace AzureFunctionsAPI_isolated
 
         }
 
-        public Customer? GetCustomer(string customerId)
+        public Customer? GetCustomerById(string customerId)
         {
-            var result = new Customer();
+            var result = new Customer(); // todo - make customer null if not found
             var command = _connection.CreateCommand();
             command.CommandText = "SELECT * from Customers WHERE CustomerId = @customerId LIMIT 1";
             var guidParameter = new SqliteParameter("@customerId", customerId.ToUpper()) { DbType = DbType.String };
@@ -65,30 +65,43 @@ namespace AzureFunctionsAPI_isolated
                 result.ProfileImage = sqReader.GetString("ProfileImage");
             }
             return result;
-
-
-
+        }
+        public Customer? GetCustomerByAge(int age)
+        {
+            var lowDate = DateTime.Today.AddYears(-(age+1)).AddDays(1).ToString("yyyy-MM-dd");
+            var highDate = DateTime.Today.AddYears(-age).ToString("yyyy-MM-dd");
+            var result = new Customer(); // todo - make customer null if not found
+            var command = _connection.CreateCommand();
+            command.CommandText = "SELECT * from Customers WHERE DateOfBirth BETWEEN @lowDob AND @highDob LIMIT 1";
+            command.Parameters.AddWithValue("lowDob", lowDate);
+            command.Parameters.AddWithValue("highDob", highDate);
+            var sqReader = command.ExecuteReader()!;
+            while (sqReader.Read())
+            {
+                result.CustomerId = Guid.Parse(sqReader.GetString("CustomerId"));
+                result.FullName = sqReader.GetString("FullName");
+                result.DateOfBirth = DateOnly.Parse(sqReader.GetString("DateOfBirth"));
+                result.ProfileImage = sqReader.GetString("ProfileImage");
+            }
+            return result;
         }
 
-        public Customer CreateCustomer(string customerId, string fullName, string dateOfBirth, string profileImage)
+        public void CreateCustomer(Customer customerToInsert)
         {
-            var customerToInsert = new Customer()
-            {
-                CustomerId = Guid.Parse(customerId),
-                FullName = fullName,
-                DateOfBirth = DateOnly.Parse(dateOfBirth),
-                ProfileImage = profileImage
-            };
-            var sql = "INSERT INTO Customers (CustomerId, FullName, DateOfBirth, ProfileImage) VALUES (@CustomerId, @FullName, @DateOfBirth, @ProfileImage)";
-            //_connection.Execute(sql, customerToInsert);
-            return customerToInsert;
-
+            var command = _connection.CreateCommand();
+            command.CommandText = "INSERT INTO Customers (CustomerId, FullName, DateOfBirth, ProfileImage) VALUES (@CustomerId, @FullName, @DateOfBirth, @ProfileImage)";
+            command.Parameters.AddWithValue("@CustomerId", customerToInsert.CustomerId);
+            command.Parameters.AddWithValue("@FullName", customerToInsert.FullName);
+            command.Parameters.AddWithValue("@DateOfBirth", customerToInsert.DateOfBirth);
+            command.Parameters.AddWithValue("@ProfileImage", customerToInsert.ProfileImage);
+            command.ExecuteNonQuery();
         }
     }
 
     public interface ICustomerRepository
     {
-        public Customer? GetCustomer(string customerId);
-        public Customer CreateCustomer(string customerId, string fullName, string dateOfBirth, string profileImage);
+        public Customer? GetCustomerById(string customerId);
+        public Customer? GetCustomerByAge(int age);
+        public void CreateCustomer(Customer customer);
     }
 }
