@@ -44,8 +44,11 @@ namespace AzureFunctionsAPI_isolated
 
             _logger.LogInformation("C# HTTP trigger function processed a request.");
             Debug.Assert(idOrAge != null, nameof(idOrAge) + " != null"); // TODO - return an error if null
-            Debug.Assert(customer != null, nameof(customer) + " != null"); // TODO - return an error if null
-                                                                           //return new OkObjectResult("Welcome to Azure Functions!" + $" customer.CustomerId = {customer.CustomerId}");
+            if (customer is null)
+            {
+                return new NotFoundObjectResult("The customer could not be found");
+            }
+
             return new JsonResult(customer);
         }
 

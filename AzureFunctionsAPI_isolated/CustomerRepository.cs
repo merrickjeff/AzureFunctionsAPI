@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using Microsoft.Data.Sqlite;
 
 namespace AzureFunctionsAPI_isolated
@@ -51,39 +52,50 @@ namespace AzureFunctionsAPI_isolated
 
         public Customer? GetCustomerById(string customerId)
         {
-            var result = new Customer(); // todo - make customer null if not found
+            var result = new Customer();
             var command = _connection.CreateCommand();
             command.CommandText = "SELECT * from Customers WHERE CustomerId = @customerId LIMIT 1";
             var guidParameter = new SqliteParameter("@customerId", customerId.ToUpper()) { DbType = DbType.String };
             command.Parameters.Add(guidParameter);
-            var sqReader = command.ExecuteReader()!;
-            while (sqReader.Read())
+            var sqlReader = command.ExecuteReader()!;
+            if (sqlReader.HasRows)
             {
-                result.CustomerId = Guid.Parse(sqReader.GetString("CustomerId"));
-                result.FullName = sqReader.GetString("FullName");
-                result.DateOfBirth = DateOnly.Parse(sqReader.GetString("DateOfBirth"));
-                result.ProfileImage = sqReader.GetString("ProfileImage");
+                while (sqlReader.Read())
+                {
+                    result.CustomerId = Guid.Parse(sqlReader.GetString("CustomerId"));
+                    result.FullName = sqlReader.GetString("FullName");
+                    result.DateOfBirth = DateOnly.Parse(sqlReader.GetString("DateOfBirth"));
+                    result.ProfileImage = sqlReader.GetString("ProfileImage");
+                }
+                return result;
             }
-            return result;
+
+            return null;
         }
         public Customer? GetCustomerByAge(int age)
         {
-            var lowDate = DateTime.Today.AddYears(-(age+1)).AddDays(1).ToString("yyyy-MM-dd");
+            var result = new Customer();
+
+            var lowDate = DateTime.Today.AddYears(-(age + 1)).AddDays(1).ToString("yyyy-MM-dd");
             var highDate = DateTime.Today.AddYears(-age).ToString("yyyy-MM-dd");
-            var result = new Customer(); // todo - make customer null if not found
             var command = _connection.CreateCommand();
             command.CommandText = "SELECT * from Customers WHERE DateOfBirth BETWEEN @lowDob AND @highDob LIMIT 1";
             command.Parameters.AddWithValue("lowDob", lowDate);
             command.Parameters.AddWithValue("highDob", highDate);
-            var sqReader = command.ExecuteReader()!;
-            while (sqReader.Read())
+            var sqlReader = command.ExecuteReader()!;
+            if (sqlReader.HasRows)
             {
-                result.CustomerId = Guid.Parse(sqReader.GetString("CustomerId"));
-                result.FullName = sqReader.GetString("FullName");
-                result.DateOfBirth = DateOnly.Parse(sqReader.GetString("DateOfBirth"));
-                result.ProfileImage = sqReader.GetString("ProfileImage");
+                while (sqlReader.Read())
+                {
+                    result.CustomerId = Guid.Parse(sqlReader.GetString("CustomerId"));
+                    result.FullName = sqlReader.GetString("FullName");
+                    result.DateOfBirth = DateOnly.Parse(sqlReader.GetString("DateOfBirth"));
+                    result.ProfileImage = sqlReader.GetString("ProfileImage");
+                }
+                return result;
             }
-            return result;
+
+            return null;
         }
 
         public void CreateCustomer(Customer customerToInsert)
