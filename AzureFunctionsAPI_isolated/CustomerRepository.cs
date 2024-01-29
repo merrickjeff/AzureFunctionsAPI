@@ -100,12 +100,18 @@ namespace AzureFunctionsAPI_isolated
 
         public void CreateCustomer(Customer customerToInsert)
         {
+
+            var client = new HttpClient();
+            var request = new HttpRequestMessage(HttpMethod.Get, $"https://ui-avatars.com/api/?name={customerToInsert.FullName}&format=svg");
+            var response = client.SendAsync(request).Result;
+            var svgResponse = response.Content.ReadAsStringAsync().Result;
+
             var command = _connection.CreateCommand();
             command.CommandText = "INSERT INTO Customers (CustomerId, FullName, DateOfBirth, ProfileImage) VALUES (@CustomerId, @FullName, @DateOfBirth, @ProfileImage)";
             command.Parameters.AddWithValue("@CustomerId", customerToInsert.CustomerId);
             command.Parameters.AddWithValue("@FullName", customerToInsert.FullName);
             command.Parameters.AddWithValue("@DateOfBirth", customerToInsert.DateOfBirth);
-            command.Parameters.AddWithValue("@ProfileImage", customerToInsert.ProfileImage);
+            command.Parameters.AddWithValue("@ProfileImage", svgResponse);
             command.ExecuteNonQuery();
         }
     }

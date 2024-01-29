@@ -43,7 +43,6 @@ namespace AzureFunctionsAPI_isolated
             }
 
             _logger.LogInformation("C# HTTP trigger function processed a request.");
-            Debug.Assert(idOrAge != null, nameof(idOrAge) + " != null"); // TODO - return an error if null
             if (customer is null)
             {
                 return new NotFoundObjectResult("The customer could not be found");
@@ -58,8 +57,7 @@ namespace AzureFunctionsAPI_isolated
             //string requestBody = new StreamReader(req.Body).ReadToEndAsync().Result;
             _logger.LogInformation("C# HTTP trigger function processed a request.");
             _customerRepository.CreateCustomer(customer);
-            return new OkObjectResult("Welcome to Azure Functions!");
+            return new OkObjectResult("The customer was created successfully");
         }
-
     }
 }
